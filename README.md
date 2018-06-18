@@ -106,15 +106,26 @@ modules: [
 If you simply want to pull states with the update interval as configured above, you don't need to do any changes to your openhab configuration.
 But it is really impressive if state changes are immediately (with less than 1sec delay in my case) shown on the mirror!
 
-The easiest and least invasive way of configuring openhab to push state changes to the magic mirror server, is via a dedicated rules-file, e.g. `mirror.rules`:
-
+First, you must have to change MagicMirror config:
 ````
-// define your magic mirror URL here; make sure that there is no trailing slash
-var String mirrorUrl = "http://mirror:8080/openhab"
+var config = {
+address: "192.168.0.11", // IP of your MM server, for listening on it's @
+port: 8080,
+ipWhitelist: ["127.0.0.1", "::ffff:127.0.0.1", "192.168.0.12", "::1"] // Add IP of your client, for listening since this @ ex:192.168.0.12 
+````
 
-// whenever one of your items of interest changes, send a GET request to the magic mirror server
-rule "L_Living to mirror"          when Item L_Living         changed then sendHttpGetRequest(mirrorUrl + "?item=L_Living&state="          + L_Living.state)          end
-rule "Reed_Door to mirror"         when Item Reed_Door        changed then sendHttpGetRequest(mirrorUrl + "?item=Reed_Door&state="         + Reed_Door.state)         end
-rule "Temperature_Entry to mirror" when Item Temerature_Entry changed then sendHttpGetRequest(mirrorUrl + "?item=Temperature_Entry&state=" + Temperature_Entry.state) end
-// etc. this is always the same pattern, independent of the item type
+
+The easiest and least invasive way of configuring openhab to push state changes to the magic mirror server, is to add all items you want to update to a group gMagicMirrorItems and create the following rule:
+````
+val String mirrorUrl = "http://<MAGIC_MIRROR_URL>:<MAGIC_MIRROR_PORT>/openhab"
+
+rule "send updates to MagicMirror"
+
+when
+	Member of gMagicMirrorItems changed
+then
+		var url = mirrorUrl + "?item=" + triggeringItem.name + "&state=" + triggeringItem.state
+		sendHttpGetRequest(url)
+		logInfo("MagicMirror","Sent to MM: "+ url)
+end
 ````
